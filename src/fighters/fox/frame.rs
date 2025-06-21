@@ -1,0 +1,97 @@
+use smash::lib::lua_const::*;
+use smash::phx::{Vector2f, Vector3f};
+use smash::app::sv_system;
+use smash::app::lua_bind::*;
+use smash::lua2cpp::*;
+use smash::phx::Hash40;
+use smashline::*;
+use smash_script::*;
+use crate::ext::Vec3Ext;
+use crate::ext::Vec2Ext;
+use smash::app::GroundCorrectKind;
+use smash::hash40;
+use crate::consts::globals::CMD_CAT1;
+use crate::consts::globals::CMD_CAT2;
+use crate::utils::compare_cat;
+use crate::utils;
+use crate::utils::jump_checker_buffer;
+
+unsafe extern "C" fn laser_land_cancel(fighter: &mut L2CFighterCommon) {
+	let boma = smash::app::sv_system::battle_object_module_accessor(fighter.lua_state_agent); 
+	let status_kind = smash::app::lua_bind::StatusModule::status_kind(boma);
+	let situation_kind = StatusModule::situation_kind(boma);
+    let cat2 = fighter.global_table[CMD_CAT2].get_i32();
+	let stick_y = ControlModule::get_stick_y(boma);
+
+    if status_kind == *FIGHTER_STATUS_KIND_SPECIAL_N {
+        if situation_kind == *SITUATION_KIND_GROUND && StatusModule::prev_situation_kind(boma) == *SITUATION_KIND_AIR {
+            StatusModule::change_status_request(boma, *FIGHTER_STATUS_KIND_LANDING, true);
+        }
+        if situation_kind == *SITUATION_KIND_AIR {
+            KineticModule::change_kinetic(boma, *FIGHTER_KINETIC_TYPE_FALL);
+            if compare_cat(cat2, *FIGHTER_PAD_CMD_CAT2_FLAG_FALL_JUMP)
+                && stick_y < -0.66
+                && KineticModule::get_sum_speed_y(boma, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY) <= 0.0 {
+                WorkModule::set_flag(boma, true, *FIGHTER_STATUS_WORK_ID_FLAG_RESERVE_DIVE);
+            }
+        }
+    }
+}
+
+unsafe extern "C" fn shine_jc(fighter: &mut L2CFighterCommon) {
+    let boma = smash::app::sv_system::battle_object_module_accessor(fighter.lua_state_agent);
+    let status_kind = smash::app::lua_bind::StatusModule::status_kind(boma);
+	let situation_kind = StatusModule::situation_kind(boma);
+    let cat1 = fighter.global_table[CMD_CAT1].get_i32();
+	let stick_x = ControlModule::get_stick_x(boma);
+    let facing = PostureModule::lr(boma);
+	let frame = MotionModule::frame(boma);
+
+    if [*FIGHTER_FOX_STATUS_KIND_SPECIAL_LW_HIT,
+        *FIGHTER_FOX_STATUS_KIND_SPECIAL_LW_LOOP,
+        *FIGHTER_FOX_STATUS_KIND_SPECIAL_LW_END].contains(&status_kind) {
+        if jump_checker_buffer(boma, cat1) {
+            if situation_kind == *SITUATION_KIND_AIR {
+                if WorkModule::get_int(boma, *FIGHTER_INSTANCE_WORK_ID_INT_JUMP_COUNT) < WorkModule::get_int(boma, *FIGHTER_INSTANCE_WORK_ID_INT_JUMP_COUNT_MAX) {
+                    StatusModule::change_status_request_from_script(boma, *FIGHTER_STATUS_KIND_JUMP_AERIAL, false);
+                }
+            } else if situation_kind == *SITUATION_KIND_GROUND {
+                StatusModule::change_status_request_from_script(boma, *FIGHTER_STATUS_KIND_JUMP_SQUAT, true);
+            }
+        }
+    }
+}
+
+static mut illusion_shorten: [bool; 8] = [false; 8];
+static mut illusion_shortened: [bool; 8] = [false; 8];
+
+unsafe extern "C" fn illusion_short(fighter: &mut L2CFighterCommon) {
+    let boma = smash::app::sv_system::battle_object_module_accessor(fighter.lua_state_agent);
+    let id = WorkModule::get_int(boma, *FIGHTER_INSTANCE_WORK_ID_INT_ENTRY_ID) as usize;
+    let motion_kind = MotionModule::motion_kind(boma);
+	let frame = MotionModule::frame(boma);
+
+    if motion_kind == hash40("special_s") || motion_kind == hash40("special_air_s") {
+        if frame <= 1.0 {
+            illusion_shorten[id] = false;
+            illusion_shortened[id] = false;
+        }
+        if illusion_shorten[id] && !illusion_shortened[id] {
+            let motion_vec = Vector3f{x: 0.25, y: 1.0, z: 1.0};
+            KineticModule::unable_energy(boma, *FIGHTER_KINETIC_ENERGY_ID_CONTROL);
+            illusion_shortened[id] = true;
+        }
+        if compare_cat(ControlModule::get_pad_flag(boma), *FIGHTER_PAD_FLAG_SPECIAL_TRIGGER) && !illusion_shortened[id] {
+            illusion_shorten[id] = true;
+            WorkModule::on_flag(boma, *FIGHTER_FOX_ILLUSION_STATUS_WORK_ID_FLAG_RUSH_FORCE_END);
+        }
+    }
+}
+
+pub fn install() {
+	Agent::new("fox")
+	.on_line(Main, laser_land_cancel)
+	.on_line(Main, shine_jc)
+    .on_line(Main, illusion_short)
+	.install();
+}
