@@ -8,11 +8,10 @@ use smash::lua2cpp::*;
 use smashline::*;
 use smash_script::*;
 use smash::lib::{L2CValue, L2CAgent};
-//
 use smash::app::*;
 use smash::phx::Vector3f;
 
-unsafe extern "C" fn game_attackairn(agent: &mut L2CAgentBase) {
+unsafe extern "C" fn game_fox_attackairn(agent: &mut L2CAgentBase) {
     frame(agent.lua_state_agent, 4.0);
     if macros::is_excute(agent) {
         WorkModule::on_flag(agent.module_accessor, *FIGHTER_STATUS_ATTACK_AIR_FLAG_ENABLE_LANDING);
@@ -36,7 +35,7 @@ unsafe extern "C" fn game_attackairn(agent: &mut L2CAgentBase) {
     }
 }
 
-unsafe extern "C" fn game_attackairf(agent: &mut L2CAgentBase) {
+unsafe extern "C" fn game_fox_attackairf(agent: &mut L2CAgentBase) {
     if macros::is_excute(agent) {
         WorkModule::on_flag(agent.module_accessor, *FIGHTER_STATUS_ATTACK_AIR_FLAG_ENABLE_LANDING);
     }
@@ -108,7 +107,7 @@ unsafe extern "C" fn game_attackairf(agent: &mut L2CAgentBase) {
     }
 }
 
-unsafe extern "C" fn game_attackairb(agent: &mut L2CAgentBase) {
+unsafe extern "C" fn game_fox_attackairb(agent: &mut L2CAgentBase) {
     frame(agent.lua_state_agent, 7.0);
     if macros::is_excute(agent) {
         WorkModule::on_flag(agent.module_accessor, *FIGHTER_STATUS_ATTACK_AIR_FLAG_ENABLE_LANDING);
@@ -130,11 +129,11 @@ unsafe extern "C" fn game_attackairb(agent: &mut L2CAgentBase) {
     }
 }
 
-unsafe extern "C" fn game_attackairhi(agent: &mut L2CAgentBase) {
+unsafe extern "C" fn game_fox_attackairhi(agent: &mut L2CAgentBase) {
     frame(agent.lua_state_agent, 9.0);
     if macros::is_excute(agent) {
         WorkModule::on_flag(agent.module_accessor, *FIGHTER_STATUS_ATTACK_AIR_FLAG_ENABLE_LANDING);
-        macros::ATTACK(agent, 0, 0, Hash40::new("tail1"), 5.0, 92, 130, 30, 0, 5.2, 0.0, 0.0, 0.0, None, None, None, 1.1, 1.25 *ATTACK_SETOFF_KIND_ON, *ATTACK_LR_CHECK_POS, false, 0, 0.0, 0, false, false, false, false, true, *COLLISION_SITUATION_MASK_GA, *COLLISION_CATEGORY_MASK_ALL, *COLLISION_PART_MASK_ALL, false, Hash40::new("collision_attr_normal"), *ATTACK_SOUND_LEVEL_S, *COLLISION_SOUND_ATTR_FOX_TAIL, *ATTACK_REGION_TAIL);
+        macros::ATTACK(agent, 0, 0, Hash40::new("tail1"), 5.0, 92, 130, 30, 0, 5.2, 0.0, 0.0, 0.0, None, None, None, 1.1, 1.25, *ATTACK_SETOFF_KIND_ON, *ATTACK_LR_CHECK_POS, false, 0, 0.0, 0, false, false, false, false, true, *COLLISION_SITUATION_MASK_GA, *COLLISION_CATEGORY_MASK_ALL, *COLLISION_PART_MASK_ALL, false, Hash40::new("collision_attr_normal"), *ATTACK_SOUND_LEVEL_S, *COLLISION_SOUND_ATTR_FOX_TAIL, *ATTACK_REGION_TAIL);
         macros::ATTACK(agent, 1, 0, Hash40::new("tail2"), 5.0, 92, 130, 30, 0, 5.2, 0.0, 0.0, 0.0, None, None, None, 1.1, 1.25, *ATTACK_SETOFF_KIND_ON, *ATTACK_LR_CHECK_POS, false, 0, 0.0, 0, false, false, false, false, true, *COLLISION_SITUATION_MASK_GA, *COLLISION_CATEGORY_MASK_ALL, *COLLISION_PART_MASK_ALL, false, Hash40::new("collision_attr_normal"), *ATTACK_SOUND_LEVEL_S, *COLLISION_SOUND_ATTR_FOX_TAIL, *ATTACK_REGION_TAIL);
         macros::ATTACK(agent, 2, 0, Hash40::new("tail3"), 5.0, 92, 130, 30, 0, 5.2, 0.0, 0.0, 0.0, None, None, None, 1.1, 1.25, *ATTACK_SETOFF_KIND_ON, *ATTACK_LR_CHECK_POS, false, 0, 0.0, 0, false, false, false, false, true, *COLLISION_SITUATION_MASK_GA, *COLLISION_CATEGORY_MASK_ALL, *COLLISION_PART_MASK_ALL, false, Hash40::new("collision_attr_normal"), *ATTACK_SOUND_LEVEL_S, *COLLISION_SOUND_ATTR_FOX_TAIL, *ATTACK_REGION_TAIL);
     }
@@ -158,7 +157,7 @@ unsafe extern "C" fn game_attackairhi(agent: &mut L2CAgentBase) {
     }
 }
 
-unsafe extern "C" fn game_attackairlw(agent: &mut L2CAgentBase) {
+unsafe extern "C" fn game_fox_attackairlw(agent: &mut L2CAgentBase) {
     frame(agent.lua_state_agent, 5.0);
     if macros::is_excute(agent) {
         WorkModule::on_flag(agent.module_accessor, *FIGHTER_STATUS_ATTACK_AIR_FLAG_ENABLE_LANDING);
@@ -192,7 +191,8 @@ unsafe extern "C" fn game_attackairlw(agent: &mut L2CAgentBase) {
     }
 }
 
-unsafe extern "C" fn game_landingairf(agent: &mut L2CAgentBase) {
+
+unsafe extern "C" fn game_fox_landingairf(agent: &mut L2CAgentBase) {
     if WorkModule::is_flag(agent.module_accessor, *FIGHTER_FOX_STATUS_ATTACK_AIR_FLAG_LANDING_DISABLE_ATTACK) {
         if macros::is_excute(agent) {
             AttackModule::clear_all(agent.module_accessor);
@@ -200,8 +200,7 @@ unsafe extern "C" fn game_landingairf(agent: &mut L2CAgentBase) {
     }
 }
 
-
-unsafe extern "C" fn game_landingairlw(agent: &mut L2CAgentBase) {
+unsafe extern "C" fn game_fox_landingairlw(agent: &mut L2CAgentBase) {
     if macros::is_excute(agent) {
         AttackModule::clear_all(agent.module_accessor);
     }
@@ -209,15 +208,13 @@ unsafe extern "C" fn game_landingairlw(agent: &mut L2CAgentBase) {
 
 pub fn install() {
     Agent::new("fox")
-    .acmd("game_attackairb", game_falco_attackairb, Priority::Low)
-    .acmd("effect_attackairb", effect_falco_attackairb, Priority::Low)
-    .acmd("sound_attackairb", sound_falco_attackairb, Priority::Low)
-    .acmd("expression_attackairb", expression_falco_attackairb, Priority::Low)
+    .acmd("game_attackairn", game_fox_attackairn, Priority::Low)
+    .acmd("game_attackairf", game_fox_attackairf, Priority::Low)
+    .acmd("game_attackairb", game_fox_attackairb, Priority::Low)
+    .acmd("game_attackairhi", game_fox_attackairhi, Priority::Low)
+    .acmd("game_attackairlw", game_fox_attackairlw, Priority::Low)
 
-    .acmd("game_attackairlw", game_falco_lwair, Priority::Low)
-    .acmd("sound_attackairlw", sound_falco_attackairlw, Priority::Low)
-
-    .acmd("game_landingairf", game_falco_attackairhi, Priority::Low)
-    .acmd("game_landingairlw", sound_falco_attackairhi, Priority::Low)
+    .acmd("game_landingairf", game_fox_landingairf, Priority::Low)
+    .acmd("game_landingairlw", game_fox_landingairlw, Priority::Low)
     .install();
 }
