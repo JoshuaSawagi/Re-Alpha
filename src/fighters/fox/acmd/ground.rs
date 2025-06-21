@@ -10,9 +10,6 @@ use smash_script::*;
 use smash::lib::{L2CValue, L2CAgent};
 //
 use smash::app::*;
-use smash::phx::Vector3f;
-use crate::util::*;
-use super::*;
 
 unsafe extern "C" fn game_fox_attack11(agent: &mut L2CAgentBase) {
     frame(agent.lua_state_agent, 2.0);
