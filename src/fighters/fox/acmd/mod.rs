@@ -1,13 +1,13 @@
 mod aerials;
 mod ground;
 mod smashes;
-//mod specials;
+mod specials;
 mod tilts;
 
 pub fn install() {
 	aerials::install();
 	ground::install();
 	smashes::install();
-	//specials::install();
+	specials::install();
 	tilts::install();
 }
