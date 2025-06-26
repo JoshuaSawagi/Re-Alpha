@@ -17,6 +17,7 @@ use smash::app::BattleObjectModuleAccessor;
 use crate::offsets;
 use crate::utils::get_fighter_common_from_accessor;
 use crate::utils::compare_mask;
+use crate::utils;
 
 pub trait Vec2Ext {
     fn new(x: f32, y: f32) -> Self where Self: Sized;
@@ -85,6 +86,9 @@ pub trait BomaExt {
     unsafe fn is_cat_flag(&mut self, category: i32, fighter_pad_cmd_flag: i32) -> bool;
     unsafe fn is_prev_status(&mut self, kind: i32) -> bool;
     unsafe fn is_weapon(&mut self) -> bool;
+
+
+    unsafe fn get_int(&mut self, what: i32) -> i32;
 }
 
 impl BomaExt for BattleObjectModuleAccessor {
@@ -134,7 +138,15 @@ impl BomaExt for BattleObjectModuleAccessor {
     unsafe fn is_weapon(&mut self) -> bool {
         return smash::app::utility::get_category(self) == *BATTLE_OBJECT_CATEGORY_WEAPON;
     }
+    unsafe fn get_int(&mut self, what: i32) -> i32 {
+        WorkModule::get_int(self, what)
+    }
 }
+
+
+
+
+
 
 pub trait GetObjects {
     unsafe fn get_object(agent: &mut Self) -> &'static mut BattleObject;
@@ -156,6 +168,26 @@ impl GetObjects for L2CAgentBase {
 
     unsafe fn get_boma(agent: &mut Self) -> &'static mut BattleObjectModuleAccessor {
         std::mem::transmute(agent.module_accessor)
+    }
+}
+
+impl GetObjects for BattleObject {
+    unsafe fn get_boma(this: &mut Self) -> &'static mut BattleObjectModuleAccessor {
+        std::mem::transmute(this.module_accessor)
+    }
+
+    unsafe fn get_object(_: &mut Self) -> &'static mut BattleObject {
+        panic!("Gannot call GetObjects::get_object on BattleObject!")
+    }
+}
+
+impl GetObjects for BattleObjectModuleAccessor {
+    unsafe fn get_boma(_: &mut Self) -> &'static mut BattleObjectModuleAccessor {
+        panic!("Gannot call GetObjects::get_boma on BattleObjectModuleAccessor!")
+    }
+
+    unsafe fn get_object(this: &mut Self) -> &'static mut BattleObject {
+        std::mem::transmute(utils::get_battle_object_from_id(this.battle_object_id))
     }
 }
 
@@ -184,4 +216,14 @@ impl LuaUtil for L2CAgentBase {
         smash_script::lua_args!(self, kinetic_id, speed.x, speed.y);
         app::sv_kinetic_energy::set_speed(self.lua_state_agent);
     }
+}
+
+//CRATES
+
+pub(crate) unsafe fn is_default(boma: &mut smash::app::BattleObjectModuleAccessor) -> bool {
+	if WorkModule::get_int(boma, *FIGHTER_INSTANCE_WORK_ID_INT_COLOR) < 16  {
+		return true 
+	} else {
+		return false
+	}
 }

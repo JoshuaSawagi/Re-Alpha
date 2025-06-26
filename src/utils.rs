@@ -66,6 +66,14 @@ pub unsafe fn x_motion_vec(val: f32, stick_x: f32) -> smash::phx::Vector3f {
     smash::phx::Vector3f{x: val * stick_x.signum(), y: 0.0, z: 0.0}
 }
 
+#[skyline::from_offset(offsets::get_battle_object_from_id())]
+pub fn get_battle_object_from_id(id: u32) -> *mut BattleObject;
+
+pub fn get_battle_object_from_accessor(boma: *mut BattleObjectModuleAccessor) -> *mut BattleObject {
+    unsafe {
+        get_battle_object_from_id((*boma).battle_object_id)
+    }
+}
 
 pub fn get_battle_object_from_entry_id(entry_id: u32) -> Option<*mut BattleObject> {
     unsafe {

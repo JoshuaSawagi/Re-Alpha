@@ -20,12 +20,14 @@ use crate::utils::get_category;
 
 mod common;
 mod utils;
+//pub mod util;
 pub mod consts;
 pub mod ext;
 pub mod offsets;
 mod fighters;
 pub mod singletons;
 pub mod imports;
+pub mod kinetic;
 
 #[skyline::main(name = "ReAlpha")]
 pub fn main() {
