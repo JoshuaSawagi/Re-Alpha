@@ -31,10 +31,88 @@ use crate::PostureModule::lr;
 use crate::utils::get_player_number;
 use crate::KineticEnergy::get_speed_x;
 use smash::app::sv_kinetic_energy;
-use crate::consts::globals::PREV_SITUATION_KIND;
-use smash::lua2cpp::L2CFighterCommon_uniq_process_JumpSquat_exec_status_param;
 
-//Escape Air
+#[skyline::hook(replace = smash::lua2cpp::L2CFighterCommon_status_pre_EscapeAir)]
+unsafe extern "C" fn status_pre_escapeair(fighter: &mut L2CFighterCommon) -> L2CValue {
+    let prev_status_kind = fighter.global_table[PREV_STATUS_KIND].get_i32();
+    let pos = *PostureModule::pos(fighter.module_accessor);
+    let dir_y = WorkModule::get_float(fighter.module_accessor, *FIGHTER_STATUS_ESCAPE_AIR_SLIDE_WORK_FLOAT_DIR_Y);
+    
+    // Check for ground underneath the player
+    let lower_bound = Vector2f::new(pos.x, pos.y - 3.0);
+    let ground_pos_any = &mut Vector2f::zero();
+    let ground_pos_stage = &mut Vector2f::zero();
+    let is_touch_any = GroundModule::line_segment_check(
+        fighter.module_accessor,
+        &Vector2f::new(pos.x, pos.y + 3.0),
+        &lower_bound,
+        &Vector2f::zero(),
+        ground_pos_any,
+        true,
+    );
+
+    let is_touch_stage = GroundModule::line_segment_check(
+        fighter.module_accessor,
+        &Vector2f::new(pos.x, pos.y + 3.0),
+        &lower_bound,
+        &Vector2f::zero(),
+        ground_pos_stage,
+        false,
+    );
+
+    // Stick input read
+    let stick_x = ControlModule::get_stick_x(fighter.module_accessor);
+    let stick_y = ControlModule::get_stick_y(fighter.module_accessor);
+
+    // Require diagonally downward input (not purely horizontal or purely downward)
+    let is_diagonal_down = stick_y < -0.2 && stick_x.abs() > 0.2;
+
+    // Determine if we can snap to ground
+    let can_snap = is_diagonal_down && !(is_touch_any == 0 as *const *const u64 || (is_touch_stage != 0 as *const *const u64 && dir_y > 0.0));
+
+    if prev_status_kind != *FIGHTER_STATUS_KIND_DAMAGE_FALL
+        && WorkModule::is_flag(fighter.module_accessor, *FIGHTER_INSTANCE_WORK_ID_FLAG_PERFECT_WAVEDASH)
+        && can_snap {
+        let entry_id = get_player_number(fighter);
+        GroundModule::attach_ground(fighter.module_accessor, true);
+        GroundModule::set_correct(fighter.module_accessor, GroundCorrectKind(*GROUND_CORRECT_KIND_GROUND));
+        PostureModule::set_pos(fighter.module_accessor, &Vector3f::new(pos.x, ground_pos_any.y + 0.1, pos.z),);
+
+        WorkModule::off_flag(fighter.module_accessor, *FIGHTER_INSTANCE_WORK_ID_FLAG_DISABLE_ESCAPE_AIR);
+        fighter.set_situation(SITUATION_KIND_GROUND.into());
+        fighter.change_status(FIGHTER_STATUS_KIND_LANDING.into(), false.into());
+        return 0.into();
+    }
+
+    // Fallback to normal EscapeAir behavior
+    StatusModule::init_settings(
+        fighter.module_accessor,
+        SituationKind(*SITUATION_KIND_AIR),
+        *FIGHTER_KINETIC_TYPE_MOTION_FALL,
+        *GROUND_CORRECT_KIND_AIR as u32,
+        GroundCliffCheckKind(*GROUND_CLIFF_CHECK_KIND_NONE),
+        false,
+        *FIGHTER_STATUS_WORK_KEEP_FLAG_NONE_FLAG,
+        *FIGHTER_STATUS_WORK_KEEP_FLAG_NONE_INT,
+        *FIGHTER_STATUS_WORK_KEEP_FLAG_NONE_FLOAT,
+        0,
+    );
+
+    FighterStatusModuleImpl::set_fighter_status_data(
+        fighter.module_accessor, 
+        false, 
+        *FIGHTER_TREADED_KIND_DISABLE, 
+        false,
+        false, 
+        false, 
+        0, 
+        0, 
+        0, 
+        0, 
+    );
+    0.into()
+}
+
 #[skyline::hook(replace = smash::lua2cpp::L2CFighterCommon_status_EscapeAir)]
 unsafe extern "C" fn status_escapeair(fighter: &mut L2CFighterCommon) -> L2CValue {
     fighter.sub_escape_air_common();
@@ -47,35 +125,6 @@ unsafe extern "C" fn status_escapeair(fighter: &mut L2CFighterCommon) -> L2CValu
     fighter.sub_shift_status_main(L2CValue::Ptr(status_escapeair_main as *const () as _))
 }
 
-/*unsafe extern "C" fn status_escapeair_main(fighter: &mut L2CFighterCommon) -> L2CValue {
-    let boma = smash::app::sv_system::battle_object_module_accessor(fighter.lua_state_agent);
-    let frame = fighter.global_table[CURRENT_FRAME].get_f32();
-    let anim_length = MotionModule::end_frame(fighter.module_accessor);
-
-    if !fighter.sub_escape_air_common_main().get_bool() {
-        fighter.sub_escape_check_rumble();
-    }
-    if WorkModule::is_flag(boma, *FIGHTER_STATUS_ESCAPE_AIR_FLAG_SLIDE) {
-        // Setting a window based on animation length
-        let start_airdodge_length = anim_length * 0.16;
-        let end_airdodge_length = anim_length * 0.3;
-
-        // Apply momentum clearing only in the 18%–29% window
-        if (start_airdodge_length..=end_airdodge_length).contains(&frame) {
-            KineticModule::unable_energy_all(boma);
-            KineticModule::clear_speed_all(boma);
-        }
-        
-        if start_airdodge_length > end_airdodge_length {
-            // Restore normal fall behavior
-            KineticModule::change_kinetic(boma, *FIGHTER_KINETIC_TYPE_FALL);
-            fighter.sub_transition_group_check_air_cliff();
-            notify_event_msc_cmd!(fighter, Hash40::new_raw(0x2127e37c07), *GROUND_CLIFF_CHECK_KIND_ALWAYS_BOTH_SIDES);
-        }
-    }
-    0.into()
-}*/
-
 unsafe extern "C" fn status_escapeair_main(fighter: &mut L2CFighterCommon) -> L2CValue {
     let boma = smash::app::sv_system::battle_object_module_accessor(fighter.lua_state_agent);
     let frame = fighter.global_table[CURRENT_FRAME].get_f32();
@@ -86,15 +135,15 @@ unsafe extern "C" fn status_escapeair_main(fighter: &mut L2CFighterCommon) -> L2
     if !fighter.sub_escape_air_common_main().get_bool() {
         fighter.sub_escape_check_rumble();
     }
-        let start_airdodge_length = anim_length * 0.16;
-        let end_airdodge_length = anim_length * 0.3;
+        let start_airdodge_length = anim_length * 0.14;
+        let end_airdodge_length = anim_length * 0.28;
     if is_directional {
         // Applies to directional
         if frame <= end_airdodge_length {
             sv_kinetic_energy!(set_accel, fighter, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY, -0.0001);
         }
         if (start_airdodge_length..=end_airdodge_length).contains(&frame) {
-            sv_kinetic_energy!(set_accel, fighter, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY, -0.00001);
+            sv_kinetic_energy!(set_accel, fighter, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY, -0.0001);
             KineticModule::unable_energy_all(boma);
             KineticModule::clear_speed_all(boma);
         }
@@ -104,11 +153,11 @@ unsafe extern "C" fn status_escapeair_main(fighter: &mut L2CFighterCommon) -> L2
             notify_event_msc_cmd!(fighter, Hash40::new_raw(0x2127e37c07), *GROUND_CLIFF_CHECK_KIND_ALWAYS_BOTH_SIDES);
         }
     } else if is_neutral {
-        let start_neutral_length = anim_length * 0.11;
-        let end_neutral_length = anim_length * 0.3;
+        let start_neutral_length = anim_length * 0.10;
+        let end_neutral_length = anim_length * 0.28;
         // Applies to neutral
         if (start_neutral_length..=end_airdodge_length).contains(&frame) {
-            sv_kinetic_energy!(set_accel, fighter, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY, -0.00001);
+            sv_kinetic_energy!(set_accel, fighter, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY, -0.0001);
             KineticModule::unable_energy_all(boma);
             KineticModule::clear_speed_all(boma);
         }
@@ -122,84 +171,76 @@ unsafe extern "C" fn status_escapeair_main(fighter: &mut L2CFighterCommon) -> L2
     0.into()
 }
 
-/*pub const CUSTOM_ROUTINE:        i32 = 0x2B;
-const WORK_ID_ENABLE_AIR_ESCAPE_MAGNET: i32 = 0x1000;
-const WORK_ID_JUMP_SPEED_RATIO: i32 = 0x1001;
-const WORK_ID_JUMP_SQUAT_FRAME: i32 = 0x1002;
-const WORK_ID_JUMPSQUAT_VELOCITY: i32 = 0x1003;
-const WORK_ID_CURRENT_MOMENTUM: i32 = 0x1005;
-const WORK_ID_CURRENT_MOMENTUM_SPECIALS: i32 = 0x1006;
-
-
-#[skyline::hook(replace = L2CFighterCommon_uniq_process_JumpSquat_exec_status_param)]
-unsafe extern "C" fn uniq_process_JumpSquat_exec_status_param(fighter: &mut L2CFighterCommon, arg: L2CValue) {
-    let should_check = if fighter.global_table[CUSTOM_ROUTINE].get_bool() {
-        let custom_routine: *const extern "C" fn(&mut L2CFighterCommon) -> L2CValue = fighter.global_table[CUSTOM_ROUTINE].get_ptr() as _;
-        if !custom_routine.is_null() {
-            let callable: extern "C" fn(&mut L2CFighterCommon) -> L2CValue = std::mem::transmute(custom_routine);
-            callable(fighter);
-            true
-        } else {
-            true
-        }
-    } else { true };
-    if should_check {
-        fighter.sub_jump_squat_uniq_check_sub(L2CValue::I32(*FIGHTER_STATUS_JUMP_FLAG_BUTTON));
-        fighter.sub_jump_squat_uniq_check_sub_mini_attack();
+//Status Jumpsquat Main, enables Wavedash out of Jumpsquat
+#[skyline::hook(replace = L2CFighterCommon_status_JumpSquat_Main)]
+unsafe extern "C" fn status_jumpsquat_main(fighter: &mut L2CFighterCommon) -> L2CValue {
+    let boma = fighter.module_accessor;
+    if fighter.global_table[JUMP_SQUAT_MAIN_UNIQ].get_bool() && {let callable: extern "C" fn(&mut L2CFighterCommon) -> L2CValue = std::mem::transmute(fighter.global_table[JUMP_SQUAT_MAIN_UNIQ].get_ptr()); callable(fighter).get_bool()} {
+        return 1.into();
     }
-
-    let mot = MotionModule::motion_kind(fighter.module_accessor);
-    let frame = MotionModule::frame(fighter.module_accessor);
-    /*let cat1 = fighter.global_table[CMD_CAT1].get_i32();
-    if (cat1 & *FIGHTER_PAD_CMD_CAT1_FLAG_AIR_ESCAPE != 0 || ControlModule::check_button_trigger(fighter.module_accessor, *CONTROL_PAD_BUTTON_GUARD_HOLD))
-    && cat1 & *FIGHTER_PAD_CMD_CAT1_FLAG_ATTACK_N == 0 {
-        if !(fighter.kind() == *FIGHTER_KIND_PICKEL 
-        && fighter.is_prev_status_one_of(&[*FIGHTER_PICKEL_STATUS_KIND_SPECIAL_N1_JUMP_SQUAT, *FIGHTER_PICKEL_STATUS_KIND_SPECIAL_N3_JUMP_SQUAT])) {
-            VarModule::on_flag(fighter.battle_object, vars::common::instance::ENABLE_AIR_ESCAPE_JUMPSQUAT);
+    /* START OF NEW ADDITIONS */
+    if ControlModule::check_button_on(boma, *CONTROL_PAD_BUTTON_GUARD) {
+        WorkModule::on_flag(boma, *FIGHTER_STATUS_WORK_ID_FLAG_RESERVE_JUMP_MINI);
+        WorkModule::on_flag(boma, *FIGHTER_INSTANCE_WORK_ID_FLAG_PERFECT_WAVEDASH);
+    }
+    if ControlModule::check_button_on(boma, *CONTROL_PAD_BUTTON_GUARD_HOLD) {
+        WorkModule::on_flag(boma, *FIGHTER_INSTANCE_WORK_ID_FLAG_PERFECT_WAVEDASH);
+    }
+    WorkModule::on_flag(boma, *FIGHTER_INSTANCE_WORK_ID_FLAG_JUMP_NO_LIMIT_ONCE);
+    /* END OF NEW ADDITIONS */
+    if WorkModule::is_enable_transition_term(boma, *FIGHTER_STATUS_TRANSITION_TERM_ID_JUMP_START) {
+        fighter.change_status(FIGHTER_STATUS_KIND_JUMP.into(), false.into());
+        return 0.into();
+    }
+    if WorkModule::is_enable_transition_term(boma, *FIGHTER_STATUS_TRANSITION_TERM_ID_FALL) && fighter.global_table[SITUATION_KIND].get_i32() == *SITUATION_KIND_AIR {
+        fighter.change_status(FIGHTER_STATUS_KIND_FALL.into(), false.into());
+        return 0.into();
+    }
+    if !fighter.sub_transition_group_check_ground_item().get_bool() {
+        if WorkModule::is_enable_transition_term(boma, *FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_SPECIAL_HI)
+        && fighter.global_table[CMD_CAT1].get_i32() & *FIGHTER_PAD_CMD_CAT1_FLAG_SPECIAL_HI != 0
+        && fighter.global_table[SITUATION_KIND].get_i32() == *SITUATION_KIND_GROUND {
+            fighter.change_status(FIGHTER_STATUS_KIND_SPECIAL_HI.into(), true.into());
+            return 0.into();
         }
-    }*/
-    let end_frame = MotionModule::end_frame_from_hash(fighter.module_accessor, Hash40::new_raw(mot));
-    if frame >= end_frame {
-        StatusModule::set_situation_kind(fighter.module_accessor, app::SituationKind(*SITUATION_KIND_AIR), false);
-        let situation_kind = fighter.global_table[SITUATION_KIND].clone();
-        fighter.global_table[PREV_SITUATION_KIND].assign(&situation_kind);
-        /*if VarModule::is_flag(fighter.battle_object, vars::common::instance::ENABLE_AIR_ESCAPE_JUMPSQUAT) {
-            if fighter.global_table[STICK_Y].get_f32() <= 0.2
-            {
-                VarModule::on_flag(fighter.battle_object, vars::common::instance::PERFECT_WAVEDASH);
-                // change kinetic/ground properties for wavedash
-                //GroundModule::correct(fighter.module_accessor, app::GroundCorrectKind(*GROUND_CORRECT_KIND_NONE));
-                WorkModule::enable_transition_term(fighter.module_accessor, *FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ESCAPE_AIR);
-            } else {
-                VarModule::off_flag(fighter.battle_object, vars::common::instance::PERFECT_WAVEDASH);
-                // change kinetic properties for rising airdodge
-                GroundModule::correct(fighter.module_accessor, app::GroundCorrectKind(*GROUND_CORRECT_KIND_AIR));
+        if !fighter.sub_transition_specialflag_hoist().get_bool() {
+            if WorkModule::is_enable_transition_term(boma, *FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_HI4_START) && !ControlModule::check_button_on(boma, *CONTROL_PAD_BUTTON_CSTICK_ON) {
+                if fighter.global_table[CHECK_ATTACK_HI4_UNIQ].get_bool() && {let callable: extern "C" fn(&mut L2CFighterCommon) -> L2CValue = std::mem::transmute(fighter.global_table[CHECK_ATTACK_HI4_UNIQ].get_ptr()); callable(fighter).get_bool()} {
+                    return 0.into();
+                }
+                if fighter.global_table[CMD_CAT1].get_i32() & *FIGHTER_PAD_CMD_CAT1_FLAG_ATTACK_HI4 != 0 && fighter.global_table[SITUATION_KIND].get_i32() == *SITUATION_KIND_GROUND {
+                    fighter.change_status(FIGHTER_STATUS_KIND_ATTACK_HI4_START.into(), true.into());
+                    return 0.into();
+                }
             }
-            WorkModule::enable_transition_term(fighter.module_accessor, *FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ESCAPE_AIR);
-        } 
-        else {*/
-            // change kinetic/ground properties for jump
-            //VarModule::off_flag(fighter.battle_object, vars::common::instance::PERFECT_WAVEDASH);
-            GroundModule::correct(fighter.module_accessor, app::GroundCorrectKind(*GROUND_CORRECT_KIND_AIR));
-            WorkModule::set_int(fighter.module_accessor, *FIGHTER_STATUS_JUMP_FROM_SQUAT, *FIGHTER_STATUS_WORK_ID_INT_RESERVE_JUMP_FROM);
-            KineticModule::change_kinetic(fighter.module_accessor, *FIGHTER_KINETIC_TYPE_JUMP);
-            WorkModule::enable_transition_term(fighter.module_accessor, *FIGHTER_STATUS_TRANSITION_TERM_ID_JUMP_START);
-        //}
+            if WorkModule::is_enable_transition_term(boma, *FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_APPEAL_U)
+            && fighter.global_table[CMD_CAT2].get_i32() & *FIGHTER_PAD_CMD_CAT2_FLAG_APPEAL_HI != 0
+            && fighter.global_table[SITUATION_KIND].get_i32() == *SITUATION_KIND_GROUND {
+                notify_event_msc_cmd!(fighter, Hash40::new_raw(0x1daca540be));
+                if fighter.pop_lua_stack(1).get_bool() {
+                    fighter.change_status(FIGHTER_STATUS_KIND_APPEAL.into(), false.into());
+                    return 0.into();
+                }
+            }
+        }
     }
-    else {
-        let boma = smash::app::sv_system::battle_object_module_accessor(fighter.lua_state_agent);
-        println!("js_vel: {}", KineticModule::get_sum_speed_x(fighter.module_accessor, *KINETIC_ENERGY_RESERVE_ATTRIBUTE_MAIN));
-        WorkModule::set_float(boma, KineticModule::get_sum_speed_x(fighter.module_accessor, *KINETIC_ENERGY_RESERVE_ATTRIBUTE_ALL) - KineticModule::get_sum_speed_x(fighter.module_accessor, *KINETIC_ENERGY_RESERVE_ATTRIBUTE_GROUND) - KineticModule::get_sum_speed_x(fighter.module_accessor, *KINETIC_ENERGY_RESERVE_ATTRIBUTE_EXTERN), WORK_ID_JUMPSQUAT_VELOCITY);
-        WorkModule::set_float(boma, KineticModule::get_sum_speed_x(fighter.module_accessor, *KINETIC_ENERGY_RESERVE_ATTRIBUTE_ALL) - KineticModule::get_sum_speed_x(fighter.module_accessor, *KINETIC_ENERGY_RESERVE_ATTRIBUTE_GROUND) - KineticModule::get_sum_speed_x(fighter.module_accessor, *KINETIC_ENERGY_RESERVE_ATTRIBUTE_EXTERN), WORK_ID_CURRENT_MOMENTUM);
-        WorkModule::set_float(boma, KineticModule::get_sum_speed_x(fighter.module_accessor, *KINETIC_ENERGY_RESERVE_ATTRIBUTE_ALL) - KineticModule::get_sum_speed_x(fighter.module_accessor, *KINETIC_ENERGY_RESERVE_ATTRIBUTE_GROUND) - KineticModule::get_sum_speed_x(fighter.module_accessor, *KINETIC_ENERGY_RESERVE_ATTRIBUTE_EXTERN), WORK_ID_CURRENT_MOMENTUM_SPECIALS);
-    }
-}*/
+    0.into()
+}
+
+//Status End Jumpsquat, clears flags
+#[skyline::hook(replace = L2CFighterCommon_status_end_JumpSquat)]
+unsafe extern "C" fn status_end_jumpsquat(fighter: &mut L2CFighterCommon) -> L2CValue {
+    WorkModule::off_flag(fighter.module_accessor, *FIGHTER_INSTANCE_WORK_ID_FLAG_JUMP_MINI_ATTACK);
+    0.into()
+}
 
 fn nro_hook(info: &skyline::nro::NroInfo) {
     if info.name == "common" {
         skyline::install_hooks!(
+            status_pre_escapeair,
             status_escapeair,
-            //uniq_process_JumpSquat_exec_status_param
+            status_jumpsquat_main,
+            status_end_jumpsquat
         );
     }
 }

@@ -174,49 +174,29 @@ unsafe extern "C" fn moonwalk(fighter : &mut L2CFighterCommon) {
     };
 }
 
-/*
-static mut moonwalk_mul: [f32;8] = [1.0;8];
-unsafe extern "C" fn moonwalk(fighter : &mut L2CFighterCommon) {
-    unsafe {
-        let boma = smash::app::sv_system::battle_object_module_accessor(fighter.lua_state_agent);
-        let stick_value_x = ControlModule::get_stick_x(boma);
-        let status_kind = smash::app::lua_bind::StatusModule::status_kind(boma);
-        let facing = PostureModule::lr(boma);
-        /* Moonwalk melee calculation: (stick_pos.x * run_accel_mul) + (sign(stick_pos.x) * run_accel_add) */
-        let x_vel = KineticModule::get_sum_speed_x(boma, *KINETIC_ENERGY_RESERVE_ATTRIBUTE_MAIN);
-        let stick_pos_x = ControlModule::get_stick_x(boma);
-        let run_accel_add = WorkModule::get_param_float(boma, hash40("run_accel_add"), 0);
-        let run_accel_mul = WorkModule::get_param_float(boma, hash40("run_accel_mul"), 0);
-
-        if [*FIGHTER_STATUS_KIND_DASH].contains(&status_kind) && stick_value_x*facing < 0.0 {
-            let moonwalk_vel: f32 = ((stick_pos_x * run_accel_mul) + (stick_pos_x / stick_pos_x.abs() * run_accel_add)).abs() * moonwalk_mul[get_player_number(boma)];
-            let added_speed = Vector3f { x: -moonwalk_vel, y: 0.0, z: 0.0 };
-            KineticModule::add_speed(boma, &added_speed);
-            moonwalk_mul[get_player_number(boma)] += 0.05;
-            WorkModule::unable_transition_term(boma, *FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_TURN);
-        }else{
-            if status_kind == *FIGHTER_STATUS_KIND_JUMP_SQUAT && 
-            [*FIGHTER_STATUS_KIND_DASH, *FIGHTER_STATUS_KIND_TURN_DASH].contains(&StatusModule::prev_status_kind(boma,0)) && moonwalk_mul[get_player_number(boma)] != 1.0 {
-                if x_vel < 0.0 {
-                    PostureModule::set_lr(boma, 1.0);
-                }else{
-                    PostureModule::set_lr(boma, -1.0);
-                }
-                PostureModule::update_rot_y_lr(boma);
-            }
+unsafe extern "C" fn taunt_cancel(fighter: &mut L2CFighterCommon) {
+    let status = StatusModule::status_kind(fighter.module_accessor);
+    if [*FIGHTER_STATUS_KIND_DASH].contains(&status) {
+        if ControlModule::check_button_trigger(fighter.module_accessor, *CONTROL_PAD_BUTTON_APPEAL_HI) {
+            fighter.change_status(FIGHTER_STATUS_KIND_APPEAL.into(), false.into());
         }
-
-        if ![*FIGHTER_STATUS_KIND_DASH, *FIGHTER_STATUS_KIND_TURN_DASH].contains(&status_kind) && moonwalk_mul[get_player_number(boma)] != 1.0 {
-            moonwalk_mul[get_player_number(boma)] = 1.0;
+        else if ControlModule::check_button_trigger(fighter.module_accessor, *CONTROL_PAD_BUTTON_APPEAL_LW) {
+            fighter.change_status(FIGHTER_STATUS_KIND_APPEAL.into(), false.into());
         }
-    }
-}*/
+        else if ControlModule::check_button_trigger(fighter.module_accessor, *CONTROL_PAD_BUTTON_APPEAL_S_L) {
+            fighter.change_status(FIGHTER_STATUS_KIND_APPEAL.into(), false.into());
+        }
+        else if ControlModule::check_button_trigger(fighter.module_accessor, *CONTROL_PAD_BUTTON_APPEAL_S_R) {
+            fighter.change_status(FIGHTER_STATUS_KIND_APPEAL.into(), false.into());
+        }
+   }
+}
 
 pub fn install() {
     Agent::new("fighter")
     .on_line(Main, pivot)
     .on_line(Main, dash_drop)
-    //.on_line(Main, fixbackdash)
+    .on_line(Main, taunt_cancel)
     .on_line(Main, run_squat)
     .on_line(Main, respawn_taunt)
     .on_line(Main, moonwalk)

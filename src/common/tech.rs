@@ -55,31 +55,8 @@ unsafe extern "C" fn glide_toss(fighter: &mut L2CFighterCommon) {
 	}
 }
 
-//=================================================================
-//== WAVEDASH_TURN_CLEAR
-//=================================================================
-
-pub const CMD_CAT1:              i32 = 0x20;
-
-unsafe extern "C" fn wavedash_turn_clear(fighter: &mut L2CFighterCommon) {
-    unsafe {
-        let cat1 = fighter.global_table[CMD_CAT1].get_i32();
-        let boma = smash::app::sv_system::battle_object_module_accessor(fighter.lua_state_agent);
-        let status_kind = smash::app::lua_bind::StatusModule::status_kind(boma);
-        if [*FIGHTER_STATUS_KIND_ESCAPE_AIR].contains(&StatusModule::prev_status_kind(boma, 0))
-            && [*FIGHTER_STATUS_KIND_LANDING_LIGHT, *FIGHTER_STATUS_KIND_LANDING].contains(&StatusModule::status_kind(boma)){
-        	WorkModule::unable_transition_term(boma, *FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_TURN);
-            if compare_cat(cat1, *FIGHTER_PAD_CMD_CAT1_FLAG_TURN) {
-                ControlModule::clear_command(boma, true);
-            }
-        }
-    }
-}
-
-
 pub fn install() {
     Agent::new("fighter")
 	.on_line(Main, glide_toss)
-	.on_line(Main, wavedash_turn_clear)
 	.install();
 }

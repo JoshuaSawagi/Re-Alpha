@@ -9,7 +9,7 @@ mod guard_damage;
 mod guard_on;
 mod landing;
 mod ledges;
-//mod sys_line;
+//mod momentum_transfer;
 mod physics;
 mod shield;
 mod tech;
@@ -25,7 +25,8 @@ pub fn install() {
     guard_on::install();
     landing::install();
     ledges::install();
-    //sys_line::install();
+    //momentum_transfer::install();
+    physics::install();
     shield::install();
     tech::install();
 }

@@ -23,6 +23,7 @@ use crate::common::physics::get_ground_correct_kind_air_trans_hook_skyline_inter
 //== Note: JostleModule::set_team(boma, 0) is for walking through
 //         other fighters
 //=================================================================
+#[skyline::hook(replace=StatusModule::init_settings)]
 pub unsafe fn init_settings_edges(boma: &mut BattleObjectModuleAccessor, situation: smash::app::SituationKind, arg3: i32, arg4: u32,
                               ground_cliff_check_kind: smash::app::GroundCliffCheckKind, arg6: bool,
                               arg7: i32, arg8: i32, arg9: i32, arg10: i32) -> u32 {
@@ -37,7 +38,7 @@ pub unsafe fn init_settings_edges(boma: &mut BattleObjectModuleAccessor, situati
         if status_kind == *FIGHTER_STATUS_KIND_APPEAL {
             fix = *GROUND_CORRECT_KIND_GROUND as u32;
         }
-
+        JostleModule::set_team(boma, 0);
         if [*FIGHTER_STATUS_KIND_WAIT,
             *FIGHTER_STATUS_KIND_DASH,
             *FIGHTER_STATUS_KIND_TURN,

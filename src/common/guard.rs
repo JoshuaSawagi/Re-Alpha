@@ -74,6 +74,24 @@ use crate::imports::BuildImports::effect;
 use crate::FIGHTER_STATUS_KIND_GUARD;
 use crate::imports::BuildImports::Hash40;
 use crate::MA_MSC_CMD_EFFECT_EFFECT_OFF_KIND;
+use crate::imports::BuildImports::L2CFighterCommon_FighterStatusGuard__calc_shield_scale;
+use crate::FIGHTER_INSTANCE_WORK_ID_FLOAT_GUARD_SHIELD_MAX;
+use crate::consts::globals::FIGHTER_KIND;
+
+#[skyline::hook(replace = L2CFighterCommon_FighterStatusGuard__calc_shield_scale)]
+pub unsafe fn calc_shield_scale(fighter: &mut L2CFighterCommon, shield_level: L2CValue) -> L2CValue {
+    let shield_level = shield_level.get_f32();
+    let fighter_kind = fighter.global_table[FIGHTER_KIND].get_i32();
+    let shield_max = WorkModule::get_float(fighter.module_accessor, *FIGHTER_INSTANCE_WORK_ID_FLOAT_GUARD_SHIELD_MAX);
+    let shield_size = WorkModule::get_param_float(fighter.module_accessor, hash40("common"), hash40("shield_size"));
+    let shield_scale = WorkModule::get_param_float(fighter.module_accessor, hash40("shield_scale"), 0);
+    let shield_scale_min = WorkModule::get_param_float(fighter.module_accessor, hash40("common"), hash40("shield_scale_min"));
+    let shield_radius = WorkModule::get_param_float(fighter.module_accessor, hash40("shield_radius"), 0);
+    let scale = (shield_level / shield_max) * (1.0 - shield_scale_min) + shield_scale_min;
+    let updated_shield = scale * shield_radius;
+    updated_shield.into()
+}
+
 
 #[skyline::hook(replace=smash::app::FighterUtil::is_valid_just_shield_reflector)]
 pub unsafe fn is_valid_just_shield_reflector(_module_accessor: &mut smash::app::BattleObjectModuleAccessor) -> bool {
@@ -246,6 +264,7 @@ pub unsafe fn status_end_Guard(fighter: &mut L2CFighterCommon) -> L2CValue {
 fn nro_hook(info: &skyline::nro::NroInfo) {
     if info.name == "common" {
         skyline::install_hooks!(
+            calc_shield_scale,
             status_sub_guard_cont_pre,
             status_guard_common_air,
             status_guard_main_common,

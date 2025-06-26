@@ -124,6 +124,7 @@ unsafe extern "C" fn dacus(fighter: &mut L2CFighterCommon) {
     }
 }
 
+/*
 //=================================================================
 //== JUMP CANCEL AIRDODGE
 //=================================================================
@@ -140,7 +141,7 @@ unsafe extern "C" fn jump_cancel_airdodge(fighter: &mut L2CFighterCommon) {
             }
         }
     }
-}
+}*/
 
 //=================================================================
 //== AIRDODGE CANCEL ZAIR AND ITEM TOSS
@@ -216,7 +217,6 @@ unsafe extern "C" fn footstool_defense(fighter: &mut L2CFighterCommon) {
 
         let player_number = get_player_number(boma);
 
-        // Prevent airdodging after a footstool until after F20
         if (status_kind == *FIGHTER_STATUS_KIND_JUMP && prev_status_0 == *FIGHTER_STATUS_KIND_TREAD_JUMP)
             || (status_kind == *FIGHTER_STATUS_KIND_JUMP_AERIAL && prev_status_0 == *FIGHTER_STATUS_KIND_JUMP && prev_status_1 == *FIGHTER_STATUS_KIND_TREAD_JUMP)
             && MotionModule::frame(boma) < 20.0 {
@@ -232,7 +232,7 @@ pub fn install() {
     .on_line(Main, jump_cancel_grab)
     .on_line(Main, ditcit)
     .on_line(Main, dacus)
-    .on_line(Main, jump_cancel_airdodge)
+    //.on_line(Main, jump_cancel_airdodge)
     .on_line(Main, airdodge_cancels)
     .on_line(Main, footstool_defense)
 	.install();

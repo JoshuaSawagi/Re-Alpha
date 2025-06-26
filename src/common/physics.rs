@@ -20,12 +20,15 @@ use crate::utils::*;
 use smash::app::lua_bind::ControlModule;
 use smash_script::lua_args;
 use smash::lib::L2CAgent;
+use smash::lua2cpp::L2CFighterCommon_status_pre_Jump_sub_param;
+use smash::lua2cpp::L2CFighterCommon_status_pre_AttackAir;
+use smash::app::GroundCliffCheckKind;
+use smash::app::SituationKind;
 
 //=================================================================
 //== ECB SHIFTS
 //=================================================================
-
-unsafe extern "C" fn ecb(fighter: &mut L2CFighterCommon) {
+unsafe extern "C" fn ecb_shifts(fighter: &mut L2CFighterCommon) {
     unsafe {
         let module_accessor = fighter.module_accessor;
         let status = StatusModule::status_kind(module_accessor);
@@ -33,7 +36,6 @@ unsafe extern "C" fn ecb(fighter: &mut L2CFighterCommon) {
         let situation = StatusModule::situation_kind(module_accessor);
         let kind = app::utility::get_kind(&mut *module_accessor);
 
-        // Abort if game isn't active
         if !is_ready_go() {
             GroundModule::set_rhombus_offset(module_accessor, &Vector2f{x:0.0, y:0.0});
             return;
@@ -179,7 +181,7 @@ unsafe extern "C" fn ecb(fighter: &mut L2CFighterCommon) {
         } else if fighter_max_offset.contains(&kind) {
             5.0
         } else {
-            3.0 // fallback
+            1.0
         };
 
         // Skip states that should use vanilla ECB
@@ -245,9 +247,30 @@ unsafe extern "C" fn get_ground_correct_kind_air_trans_hook(_boma: &mut smash::a
     return *GROUND_CORRECT_KIND_AIR;
 }
 
+
+#[skyline::hook(replace = L2CFighterCommon_status_pre_AttackAir)]
+unsafe extern "C" fn status_pre_attackair(fighter: &mut L2CFighterCommon) -> L2CValue {
+    WorkModule::on_flag(fighter.module_accessor, *FIGHTER_INSTANCE_WORK_ID_FLAG_JUMP_NO_LIMIT_ONCE);
+    StatusModule::init_settings(fighter.module_accessor, SituationKind(*SITUATION_KIND_AIR), *FIGHTER_KINETIC_TYPE_MOTION_FALL, *GROUND_CORRECT_KIND_AIR as u32, GroundCliffCheckKind(*GROUND_CLIFF_CHECK_KIND_NONE), true, *FIGHTER_STATUS_WORK_KEEP_FLAG_ATTACK_AIR_FLAG, *FIGHTER_STATUS_WORK_KEEP_FLAG_ATTACK_AIR_INT, *FIGHTER_STATUS_WORK_KEEP_FLAG_ATTACK_AIR_FLOAT, 0);
+    FighterStatusModuleImpl::set_fighter_status_data(fighter.module_accessor, false, *FIGHTER_TREADED_KIND_NO_REAC, false, false, false, *FIGHTER_LOG_MASK_FLAG_ACTION_CATEGORY_NONE as u64, *FIGHTER_STATUS_ATTR_CLEAR_MOTION_ENERGY as u32, *FIGHTER_POWER_UP_ATTACK_BIT_ATTACK_AIR as u32, 0);
+    0.into()
+}
+
+//Status Pre Jump Sub Param, handles momentum transfer
+#[skyline::hook(replace = L2CFighterCommon_status_pre_Jump_sub_param)]
+unsafe extern "C" fn status_pre_jump_sub_param(fighter: &mut L2CFighterCommon, param_1: L2CValue, param_2: L2CValue, param_3: L2CValue, param_4: L2CValue, param_5: L2CValue) {
+    WorkModule::on_flag(fighter.module_accessor, *FIGHTER_INSTANCE_WORK_ID_FLAG_JUMP_NO_LIMIT_ONCE);
+    call_original!(fighter, param_1, param_2, param_3, param_4, param_5)
+}
+
+
 pub fn install() {
     Agent::new("fighter")
-	.on_line(Main, ecb)
-	.install();
-    skyline::install_hooks!(get_ground_correct_kind_air_trans_hook);
+	.on_line(Main, ecb_shifts)
+    .install();
+    skyline::install_hooks!(
+        get_ground_correct_kind_air_trans_hook,
+        status_pre_attackair,
+        status_pre_jump_sub_param
+    );
 }
