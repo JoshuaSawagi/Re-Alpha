@@ -8,7 +8,6 @@ use smash::lua2cpp::*;
 use smashline::*;
 use smash_script::*;
 use smash::lib::{L2CValue, L2CAgent};
-//
 use smash::app::*;
 use smash::phx::Vector3f;
 
@@ -42,11 +41,11 @@ unsafe extern "C" fn game_falco_attackairb(agent: &mut L2CAgentBase) {
 }
 
 unsafe extern "C" fn effect_falco_attackairb(agent: &mut L2CAgentBase) {
-    frame(agent.lua_state_agent, 3.0);
+    frame(agent.lua_state_agent, 4.0);
     if macros::is_excute(agent) {
         macros::EFFECT_FOLLOW(agent, Hash40::new("sys_attack_arc_b"), Hash40::new("top"), 2, 6, -3.5, 23, 120, 200, 0.9, true);
     }
-    frame(agent.lua_state_agent, 9.0);
+    frame(agent.lua_state_agent, 8.0);
     if macros::is_excute(agent) {
         macros::EFFECT(agent, Hash40::new("sys_attack_impact"), Hash40::new("top"), 0, 7.5, -12, 0, 0, 0, 1.35, 0, 0, 0, 0, 0, 360, true);
         macros::LAST_EFFECT_SET_RATE(agent, 1.3);
