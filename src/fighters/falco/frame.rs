@@ -15,6 +15,16 @@ use crate::consts::globals::CMD_CAT2;
 use crate::utils::compare_cat;
 use crate::utils;
 use crate::utils::jump_checker_buffer;
+use crate::ext::BomaExt;
+use crate::consts::FIGHTER_INSTANCE_WORK_ID_SPECIAL_STALL_USED;
+use crate::ext::is_default;
+
+
+static mut illusion_shorten: [bool; 8] = [false; 8];
+static mut illusion_shortened: [bool; 8] = [false; 8];
+
+static mut has_special_lw: [bool; 8] = [false; 8];
+static mut stall: [bool; 8] = [false; 8];
 
 unsafe extern "C" fn laser_land_cancel(fighter: &mut L2CFighterCommon) {
 	let boma = smash::app::sv_system::battle_object_module_accessor(fighter.lua_state_agent); 
@@ -52,7 +62,7 @@ unsafe extern "C" fn shine_jc_turnaround(fighter: &mut L2CFighterCommon) {
             PostureModule::reverse_lr(boma);
             PostureModule::update_rot_y_lr(boma);
         }
-        if frame > 3.0 {
+        if frame > 5.0 {
             KineticModule::suspend_energy(boma, *FIGHTER_KINETIC_ENERGY_ID_CONTROL);
             if utils::jump_checker_buffer(boma, cat1) {
                 if situation_kind == *SITUATION_KIND_AIR {
@@ -66,9 +76,6 @@ unsafe extern "C" fn shine_jc_turnaround(fighter: &mut L2CFighterCommon) {
         }
     }
 }
-
-static mut illusion_shorten: [bool; 8] = [false; 8];
-static mut illusion_shortened: [bool; 8] = [false; 8];
 
 unsafe extern "C" fn illusion_short(fighter: &mut L2CFighterCommon) {
     let boma = smash::app::sv_system::battle_object_module_accessor(fighter.lua_state_agent);
@@ -93,10 +100,67 @@ unsafe extern "C" fn illusion_short(fighter: &mut L2CFighterCommon) {
     }
 }
 
+unsafe extern "C" fn jump_cancel_shine(fighter: &mut L2CFighterCommon) {
+    unsafe {
+        let boma = smash::app::sv_system::battle_object_module_accessor(fighter.lua_state_agent);
+        let fighter_kind = smash::app::utility::get_kind(boma);
+        let status_kind = smash::app::lua_bind::StatusModule::status_kind(boma);
+        let cat1 = fighter.global_table[CMD_CAT1].get_i32();
+        let frame = MotionModule::frame(boma);
+
+        if status_kind == *FIGHTER_STATUS_KIND_JUMP_SQUAT {
+            if compare_cat(cat1, *FIGHTER_PAD_CMD_CAT1_FLAG_SPECIAL_LW) {
+                WorkModule::on_flag(boma, *FIGHTER_STATUS_WORK_ID_FLAG_RESERVE_ATTACK_DISABLE_MINI_JUMP_ATTACK);
+                StatusModule::change_status_request_from_script(boma, *FIGHTER_STATUS_KIND_SPECIAL_LW, true);
+            }
+        }
+    }
+}
+
+unsafe extern "C" fn shine_momentum(fighter: &mut L2CFighterCommon) {
+    unsafe {
+        let boma = smash::app::sv_system::battle_object_module_accessor(fighter.lua_state_agent); 
+		if is_default(boma) {
+			let status_kind = smash::app::lua_bind::StatusModule::status_kind(boma);
+			let id = WorkModule::get_int(boma, *FIGHTER_INSTANCE_WORK_ID_INT_ENTRY_ID) as usize;
+			let motion_kind = MotionModule::motion_kind(boma);
+			let frame = MotionModule::frame(boma);
+
+			if [hash40("special_lw"), hash40("special_lw_r"), hash40("special_lw_l"), hash40("special_air_lw"), hash40("special_air_lw_r"), hash40("special_air_lw_l")].contains(&motion_kind) {
+				if !has_special_lw[id] && StatusModule::situation_kind(boma) == *SITUATION_KIND_AIR {
+					has_special_lw[id] = true;
+					stall[id] = true;
+				};
+				
+				if frame > 32.0 {
+					stall[id] = false; 
+					KineticModule::resume_energy(fighter.module_accessor, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY);
+					KineticModule::resume_energy(fighter.module_accessor, *FIGHTER_KINETIC_ENERGY_ID_CONTROL);
+					CancelModule::enable_cancel(boma);
+				} else {
+					if stall[id] {
+						KineticModule::suspend_energy(fighter.module_accessor, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY);
+						KineticModule::suspend_energy(fighter.module_accessor, *FIGHTER_KINETIC_ENERGY_ID_CONTROL);
+                        macros::SET_SPEED_EX(fighter, 0.0, -0.227, *KINETIC_ENERGY_RESERVE_ATTRIBUTE_MAIN);
+					};
+				};
+			} else {
+				stall[id] = false;
+			};
+			if StatusModule::situation_kind(boma) != *SITUATION_KIND_AIR {
+				has_special_lw[id] = false;
+				stall[id] = false;
+			};
+		}
+    }
+}
+
 pub fn install() {
 	Agent::new("falco")
 	.on_line(Main, laser_land_cancel)
 	.on_line(Main, shine_jc_turnaround)
     .on_line(Main, illusion_short)
+    .on_line(Main, jump_cancel_shine)
+    //.on_line(Main, shine_momentum)
 	.install();
 }
