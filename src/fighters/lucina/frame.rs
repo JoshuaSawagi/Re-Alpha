@@ -8,7 +8,6 @@ use smash::lua2cpp::*;
 use smashline::*;
 use smash_script::*;
 use smash::lib::{L2CValue, L2CAgent};
-//
 use smash::app::*;
 use smash::phx::Vector3f;
 use smash::app::sv_animcmd::EFFECT_FOLLOW_RND;
@@ -25,7 +24,7 @@ unsafe extern "C" fn side_special_cancels(fighter: &mut L2CFighterCommon) {
     let boma = smash::app::sv_system::battle_object_module_accessor(fighter.lua_state_agent);
     let situation_kind = StatusModule::situation_kind(boma);
     let status_kind = smash::app::lua_bind::StatusModule::status_kind(boma);
-    let cat1 = fighter.global_table[CMD_CAT1].get_i32();
+    let cat1 = ControlModule::get_command_flag_cat(boma, 0);
     let motion_kind = MotionModule::motion_kind(boma);
     let fighter_kind = smash::app::utility::get_kind(boma);
     let frame = MotionModule::frame(boma);
@@ -116,7 +115,6 @@ unsafe extern "C" fn side_special_cancels(fighter: &mut L2CFighterCommon) {
     }
 }
 
-// Up Special Reverse
 unsafe extern "C" fn up_special_reverse(fighter: &mut L2CFighterCommon) {
     let boma = sv_system::battle_object_module_accessor(fighter.lua_state_agent); 
     let fighter_kind = utility::get_kind(boma);
@@ -142,8 +140,7 @@ unsafe extern "C" fn up_special_reverse(fighter: &mut L2CFighterCommon) {
     }
 }
 
-
-unsafe extern "C" fn dancing_blade_vertical_momentum(fighter: &mut L2CFighterCommon) {
+unsafe extern "C" fn dancing_blade_momentum(fighter: &mut L2CFighterCommon) {
     let boma = sv_system::battle_object_module_accessor(fighter.lua_state_agent);
     let fighter_gravity = KineticModule::get_energy(boma, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY) as *mut app::FighterKineticEnergyGravity;
     if boma.is_status_one_of(&[*FIGHTER_STATUS_KIND_SPECIAL_S, *FIGHTER_MARTH_STATUS_KIND_SPECIAL_S2]) && boma.is_situation(*SITUATION_KIND_AIR) {
@@ -166,11 +163,9 @@ unsafe extern "C" fn sword_length(fighter: &mut L2CFighterCommon) {
 
 pub fn install() {
     Agent::new("lucina")
-
     .on_line(Main, side_special_cancels)
     .on_line(Main, up_special_reverse)
-    .on_line(Main, dancing_blade_vertical_momentum)
+    .on_line(Main, dancing_blade_momentum)
     .on_line(Main, sword_length)
-
     .install();
 }

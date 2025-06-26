@@ -47,8 +47,8 @@ unsafe extern "C" fn dancing_blade_vertical_momentum(fighter: &mut L2CFighterCom
     let boma = sv_system::battle_object_module_accessor(fighter.lua_state_agent);
     let fighter_gravity = KineticModule::get_energy(boma, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY) as *mut app::FighterKineticEnergyGravity;
     if boma.is_status_one_of(&[*FIGHTER_STATUS_KIND_SPECIAL_S, *FIGHTER_MARTH_STATUS_KIND_SPECIAL_S2]) && boma.is_situation(*SITUATION_KIND_AIR) {
-        lua_bind::FighterKineticEnergyGravity::set_accel(fighter_gravity, -0.06);
-        lua_bind::FighterKineticEnergyGravity::set_stable_speed(fighter_gravity, -1.5);
+        lua_bind::FighterKineticEnergyGravity::set_accel(fighter_gravity, -0.072);
+        lua_bind::FighterKineticEnergyGravity::set_stable_speed(fighter_gravity, -2.0);
     }
 
     if boma.is_situation(*SITUATION_KIND_GROUND) && WorkModule::is_flag(boma, FIGHTER_INSTANCE_WORK_ID_SPECIAL_STALL_USED) { 

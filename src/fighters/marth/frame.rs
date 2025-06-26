@@ -8,7 +8,6 @@ use smash::lua2cpp::*;
 use smashline::*;
 use smash_script::*;
 use smash::lib::{L2CValue, L2CAgent};
-//
 use smash::app::*;
 use smash::phx::Vector3f;
 use smash::app::sv_animcmd::EFFECT_FOLLOW_RND;
@@ -31,7 +30,7 @@ unsafe extern "C" fn up_special_reverse(fighter: &mut L2CFighterCommon) {
     // Roy frame 10
     let mut target_frame = 6.0;
     if fighter_kind == *FIGHTER_KIND_MARTH {
-        target_frame = 10.0;
+        target_frame = 6.0;
     }
 
     if status_kind == *FIGHTER_STATUS_KIND_SPECIAL_HI {

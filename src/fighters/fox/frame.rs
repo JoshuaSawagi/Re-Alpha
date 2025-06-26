@@ -88,10 +88,28 @@ unsafe extern "C" fn illusion_short(fighter: &mut L2CFighterCommon) {
     }
 }
 
+unsafe extern "C" fn jump_cancel_shine(fighter: &mut L2CFighterCommon) {
+    unsafe {
+        let boma = smash::app::sv_system::battle_object_module_accessor(fighter.lua_state_agent);
+        let fighter_kind = smash::app::utility::get_kind(boma);
+        let status_kind = smash::app::lua_bind::StatusModule::status_kind(boma);
+        let cat1 = fighter.global_table[CMD_CAT1].get_i32();
+        let frame = MotionModule::frame(boma);
+
+        if status_kind == *FIGHTER_STATUS_KIND_JUMP_SQUAT {
+            if compare_cat(cat1, *FIGHTER_PAD_CMD_CAT1_FLAG_SPECIAL_LW) {
+                WorkModule::on_flag(boma, *FIGHTER_STATUS_WORK_ID_FLAG_RESERVE_ATTACK_DISABLE_MINI_JUMP_ATTACK);
+                StatusModule::change_status_request_from_script(boma, *FIGHTER_STATUS_KIND_SPECIAL_LW, true);
+            }
+        }
+    }
+}
+
 pub fn install() {
 	Agent::new("fox")
 	.on_line(Main, laser_land_cancel)
 	.on_line(Main, shine_jc)
     .on_line(Main, illusion_short)
+    .on_line(Main, jump_cancel_shine)
 	.install();
 }
