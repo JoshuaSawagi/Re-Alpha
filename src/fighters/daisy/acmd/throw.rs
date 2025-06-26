@@ -15,17 +15,12 @@ use smash::app;
 
 unsafe extern "C" fn game_daisy_throwf(agent: &mut L2CAgentBase) {
     if macros::is_excute(agent) {
-        macros::ATTACK_ABS(agent, *FIGHTER_ATTACK_ABSOLUTE_KIND_THROW, 0, 5.0, 45, 45, 0, 70, 0.0, 1.0, *ATTACK_LR_CHECK_F, 0.0, true, Hash40::new("collision_attr_normal"), *ATTACK_SOUND_LEVEL_S, *COLLISION_SOUND_ATTR_NONE, *ATTACK_REGION_THROW);
+        macros::ATTACK_ABS(agent, *FIGHTER_ATTACK_ABSOLUTE_KIND_THROW, 0, 5.0, 45, 120, 0, 55, 0.0, 1.0, *ATTACK_LR_CHECK_F, 0.0, true, Hash40::new("collision_attr_normal"), *ATTACK_SOUND_LEVEL_S, *COLLISION_SOUND_ATTR_NONE, *ATTACK_REGION_THROW);
         macros::ATTACK_ABS(agent, *FIGHTER_ATTACK_ABSOLUTE_KIND_CATCH, 0, 3.0, 361, 100, 0, 40, 0.0, 1.0, *ATTACK_LR_CHECK_F, 0.0, true, Hash40::new("collision_attr_normal"), *ATTACK_SOUND_LEVEL_S, *COLLISION_SOUND_ATTR_NONE, *ATTACK_REGION_THROW);
-    }
-    if macros::IS_EXIST_ARTICLE(agent, *FIGHTER_DAISY_GENERATE_ARTICLE_KINOPIO) {
-        if macros::is_excute(agent) {
-            ArticleModule::change_motion(agent.module_accessor, *FIGHTER_DAISY_GENERATE_ARTICLE_KINOPIO, Hash40::new("throw_f"), false, -1.0);
-        }
     }
     frame(agent.lua_state_agent, 14.0);
     if macros::is_excute(agent) {
-        macros::ATTACK(agent, 0, 0, Hash40::new("top"), 2.0, 361, 50, 0, 55, 4.5, 0.0, 7.5, 5.0, None, None, None, 1.0, 1.0, *ATTACK_SETOFF_KIND_OFF, *ATTACK_LR_CHECK_POS, false, 0, 0.0, 0, false, false, false, false, true, *COLLISION_SITUATION_MASK_GA, *COLLISION_CATEGORY_MASK_ALL, *COLLISION_PART_MASK_ALL, false, Hash40::new("collision_attr_normal"), *ATTACK_SOUND_LEVEL_M, *COLLISION_SOUND_ATTR_KICK, *ATTACK_REGION_NONE);
+        macros::ATTACK(agent, 0, 0, Hash40::new("top"), 3.5, 80, 100, 0, 70, 4.8, 4.8, 0.0, 0.0, None, None, None, 1.5, 1.0, *ATTACK_SETOFF_KIND_OFF, *ATTACK_LR_CHECK_POS, false, 0, 0.0, 0, false, false, false, false, true, *COLLISION_SITUATION_MASK_GA, *COLLISION_CATEGORY_MASK_ALL, *COLLISION_PART_MASK_ALL, false, Hash40::new("collision_attr_normal"), *ATTACK_SOUND_LEVEL_M, *COLLISION_SOUND_ATTR_KICK, *ATTACK_REGION_NONE);
         AttackModule::set_catch_only_all(agent.module_accessor, true, false);
         macros::CHECK_FINISH_CAMERA(agent, 11, 5);
     }
@@ -37,14 +32,29 @@ unsafe extern "C" fn game_daisy_throwf(agent: &mut L2CAgentBase) {
         macros::ATK_HIT_ABS(agent, *FIGHTER_ATTACK_ABSOLUTE_KIND_THROW, Hash40::new("throw"), target, target_group, target_no);
         AttackModule::clear_all(agent.module_accessor);
     }
-    frame(agent.lua_state_agent, 36.0);
+}
+
+unsafe extern "C" fn effect_daisy_throwf(agent: &mut L2CAgentBase) {
     if macros::is_excute(agent) {
-        ArticleModule::remove_exist(agent.module_accessor, *FIGHTER_DAISY_GENERATE_ARTICLE_KINOPIO, ArticleOperationTarget(*ARTICLE_OPE_TARGET_ALL));
+        macros::FOOT_EFFECT(agent, Hash40::new("null"), Hash40::new("top"), 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, false);
+        macros::EFFECT_FLIP_ALPHA(agent, Hash40::new("sys_attack_arc_b"), Hash40::new("sys_attack_arc_b"), Hash40::new("top"), 0, 10, 7.5, 10, -35, 8, 0.8, 0, 0, 0, 0, 0, 0, true, *EF_FLIP_YZ, 0.3);
+        macros::LAST_EFFECT_SET_RATE(agent, 1.4);
     }
+}
+
+unsafe extern "C" fn daisy_remove_toad(agent: &mut L2CAgentBase) {
+    let lua_state = agent.lua_state_agent;
+}
+
+unsafe extern "C" fn daisy_catch_release_eff(fighter: &mut L2CAgentBase) {
+    let lua_state = fighter.lua_state_agent;
 }
 
 pub fn install() {
     Agent::new("daisy")
     .acmd("game_throwf", game_daisy_throwf, Priority::Low)
+    .acmd("effect_throwf", effect_daisy_throwf, Priority::Low)
+    .acmd("game_catchpull", daisy_remove_toad, Priority::Low)    
+    .acmd("game_catchwait", daisy_catch_release_eff, Priority::Low)    
     .install();
 }
